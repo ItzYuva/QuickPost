@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+sqlmodel
+asyncpg
+aiosqlite
+fastapi-users[sqlalchemy,password]
+python-dotenv
+python-multipart
+pydantic
+imagekitio
+streamlit
+requests
