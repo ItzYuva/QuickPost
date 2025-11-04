@@ -6,12 +6,13 @@ A modern social media micro-platform to **share images and videos instantly**, b
 ## **Overview**
 
 **QuickPost** lets users register, log in, upload media (images/videos), and view posts from all users in a simple, clean feed.  
+
 It’s powered by:
-- 🐍 **FastAPI**: backend for API endpoints and authentication  
-- 🖼️ **ImageKit**: for cloud media storage and delivery  
-- 🧰 **PostgreSQL**: (via SQLAlchemy) for database persistence  
-- 🧠 **Streamlit**: frontend for real time web interaction  
-- ☁️ **Render**: (backend hosting) and **Streamlit Cloud** (frontend hosting)  
+-  **FastAPI**: backend for API endpoints and authentication  
+-  **ImageKit**: for cloud media storage and delivery  
+-  **PostgreSQL**: (via SQLAlchemy) for database persistence  
+-  **Streamlit**: frontend for real time web interaction  
+-  **Render**: (backend hosting) and **Streamlit Cloud** (frontend hosting)  
 
 ---
 
