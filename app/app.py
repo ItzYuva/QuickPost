@@ -12,6 +12,7 @@ import uuid
 import tempfile
 from app.users import auth_backend, current_active_user, fastapi_users
 
+from sqlalchemy import text
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -120,3 +121,9 @@ async def delete_post(post_id: str, session: AsyncSession = Depends(get_async_se
         return {"success": True, "message": "Post deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/reset-db")
+async def reset_db(session: AsyncSession = Depends(get_async_session)):
+    await session.execute(text("DROP TABLE IF EXISTS posts CASCADE;"))
+    await session.commit()
+    return {"message": "✅ Dropped posts table successfully!"}

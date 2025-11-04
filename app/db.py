@@ -65,12 +65,23 @@ from sqlalchemy.orm import DeclarativeBase, relationship
 from fastapi_users.db import SQLAlchemyUserDatabase, SQLAlchemyBaseUserTableUUID
 from fastapi import Depends
 
-# read DB URL from env (Render will set DATABASE_URL)
+# Read DATABASE_URL from env
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./test.db")
+
+# Detect if we're running with Postgres
+IS_POSTGRES = DATABASE_URL.startswith("postgres") or DATABASE_URL.startswith("postgresql")
+
+# Import Postgres UUID type only if needed
+if IS_POSTGRES:
+    from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+    ID_TYPE = PG_UUID(as_uuid=True)
+else:
+    ID_TYPE = String
 
 class Base(DeclarativeBase):
     pass
 
+# Keep using fastapi-users' base user table (uses UUID-like id)
 class User(SQLAlchemyBaseUserTableUUID, Base):
     __tablename__ = "user"
     posts = relationship("Post", back_populates="user")
@@ -78,9 +89,18 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
 class Post(Base):
     __tablename__ = "posts"
 
-    # store UUIDs as strings for SQLite/Postgres portability
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("user.id"), nullable=False)
+    # Primary key type depends on backend
+    if IS_POSTGRES:
+        id = Column(ID_TYPE, primary_key=True, default=uuid.uuid4)
+    else:
+        id = Column(ID_TYPE, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    # user_id must match user's id type (UUID on Postgres, String on SQLite)
+    if IS_POSTGRES:
+        user_id = Column(ID_TYPE, ForeignKey("user.id"), nullable=False)
+    else:
+        user_id = Column(ID_TYPE, ForeignKey("user.id"), nullable=False)
+
     caption = Column(Text)
     url = Column(String, nullable=False)
     file_type = Column(String, nullable=False)
@@ -89,12 +109,11 @@ class Post(Base):
 
     user = relationship("User", back_populates="posts")
 
-# async engine + sessionmaker
+# engine & async session maker
 engine = create_async_engine(DATABASE_URL, echo=False)
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
 async def create_db_and_tables():
-    # create tables on startup using metadata
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
