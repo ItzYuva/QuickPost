@@ -5,8 +5,9 @@ from fastapi_users import FastAPIUsers, models, BaseUserManager, UUIDIDMixin
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
 from fastapi_users.db import SQLAlchemyUserDatabase
 from app.db import User, get_user_db
+import os
 
-SECRET = "quickpost@110403"
+SECRET = os.getenv("SECRET", "quickpost-default-secret")
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     reset_password_token_secret = SECRET
