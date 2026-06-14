@@ -84,6 +84,7 @@ class Base(DeclarativeBase):
 # Keep using fastapi-users' base user table (uses UUID-like id)
 class User(SQLAlchemyBaseUserTableUUID, Base):
     __tablename__ = "user"
+    username = Column(String, unique=True, nullable=True, index=True)
     posts = relationship("Post", back_populates="user")
 
 class Post(Base):

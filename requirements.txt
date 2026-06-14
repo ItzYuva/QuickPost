@@ -8,6 +8,6 @@ fastapi-users[sqlalchemy,password]
 python-dotenv
 python-multipart
 pydantic
-imagekitio
+imagekitio<5.0
 streamlit
 requests

@@ -13,6 +13,8 @@ if 'token' not in st.session_state:
     st.session_state.token = None
 if 'user' not in st.session_state:
     st.session_state.user = None
+if 'upload_success' not in st.session_state:
+    st.session_state.upload_success = False
 
 
 def get_headers():
@@ -25,16 +27,16 @@ def get_headers():
 def login_page():
     st.title("Welcome to Quick Post")
 
-    # Simple form with two buttons
-    email = st.text_input("Email:")
-    password = st.text_input("Password:", type="password")
+    tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
 
-    if email and password:
-        col1, col2 = st.columns(2)
+    with tab_login:
+        email = st.text_input("Email:", key="login_email")
+        password = st.text_input("Password:", type="password", key="login_password")
 
-        with col1:
-            if st.button("Login", type="primary", use_container_width=True):
-                # Login using FastAPI Users JWT endpoint
+        if st.button("Login", type="primary", use_container_width=True):
+            if not email or not password:
+                st.error("Please enter email and password.")
+            else:
                 login_data = {"username": email, "password": password}
                 response = requests.post(f"{BASE_URL}/auth/jwt/login", data=login_data)
 
@@ -42,7 +44,6 @@ def login_page():
                     token_data = response.json()
                     st.session_state.token = token_data["access_token"]
 
-                    # Get user info
                     user_response = requests.get(f"{BASE_URL}/users/me", headers=get_headers())
                     if user_response.status_code == 200:
                         st.session_state.user = user_response.json()
@@ -52,23 +53,31 @@ def login_page():
                 else:
                     st.error("Invalid email or password!")
 
-        with col2:
-            if st.button("Sign Up", type="secondary", use_container_width=True):
-                # Register using FastAPI Users
-                signup_data = {"email": email, "password": password}
+    with tab_signup:
+        new_username = st.text_input("Username:", key="signup_username")
+        new_email = st.text_input("Email:", key="signup_email")
+        new_password = st.text_input("Password:", type="password", key="signup_password")
+
+        if st.button("Sign Up", type="secondary", use_container_width=True):
+            if not new_username or not new_email or not new_password:
+                st.error("Please fill in all fields.")
+            else:
+                signup_data = {"username": new_username, "email": new_email, "password": new_password}
                 response = requests.post(f"{BASE_URL}/auth/register", json=signup_data)
 
                 if response.status_code == 201:
-                    st.success("Account created! Click Login now.")
+                    st.success("Account created! Go to Login tab.")
                 else:
                     error_detail = response.json().get("detail", "Registration failed")
                     st.error(f"Registration failed: {error_detail}")
-    else:
-        st.info("Enter your email and password above")
 
 
 def upload_page():
     st.title("📸 Share Something")
+
+    if st.session_state.upload_success:
+        st.success("Uploaded successfully!")
+        st.session_state.upload_success = False
 
     uploaded_file = st.file_uploader("Choose media", type=['png', 'jpg', 'jpeg', 'mp4', 'avi', 'mov', 'mkv', 'webm'])
     caption = st.text_area("Caption:", placeholder="What's on your mind?")
@@ -80,7 +89,7 @@ def upload_page():
             response = requests.post(f"{BASE_URL}/upload", files=files, data=data, headers=get_headers())
 
             if response.status_code == 200:
-                st.success("Posted!")
+                st.session_state.upload_success = True
                 st.rerun()
             else:
                 st.error("Upload failed!")
@@ -108,7 +117,6 @@ def create_transformed_url(original_url, transformation_params, caption=None):
 
     parts = original_url.split("/")
 
-    imagekit_id = parts[3]
     file_path = "/".join(parts[4:])
     base_url = "/".join(parts[:4])
     return f"{base_url}/tr:{transformation_params}/{file_path}"
@@ -131,11 +139,10 @@ def feed_page():
             # Header with user, date, and delete button (if owner)
             col1, col2 = st.columns([4, 1])
             with col1:
-                st.markdown(f"**{post['email']}** • {post['created_at'][:10]}")
+                st.markdown(f"**{post['username']}**")
             with col2:
                 if post.get('is_owner', False):
                     if st.button("🗑️", key=f"delete_{post['id']}", help="Delete post"):
-                        # Delete the post
                         response = requests.delete(f"{BASE_URL}/posts/{post['id']}", headers=get_headers())
                         if response.status_code == 200:
                             st.success("Post deleted!")
@@ -143,16 +150,15 @@ def feed_page():
                         else:
                             st.error("Failed to delete post!")
 
-            # Uniform media display with caption overlay
             caption = post.get('caption', '')
             if post['file_type'] == 'image':
-                uniform_url = create_transformed_url(post['url'], "", caption)
-                st.image(uniform_url, width=300)
+                st.image(post['url'], width=300)
             else:
-                # For videos: specify only height to maintain aspect ratio + caption overlay
                 uniform_video_url = create_transformed_url(post['url'], "w-400,h-200,cm-pad_resize,bg-blurred")
                 st.video(uniform_video_url, width=300)
-                st.caption(caption)
+
+            if caption:
+                st.markdown(caption)
 
             st.markdown("")  # Space between posts
     else:
@@ -164,7 +170,8 @@ if st.session_state.user is None:
     login_page()
 else:
     # Sidebar navigation
-    st.sidebar.title(f"👋 Hi {st.session_state.user['email']}!")
+    display_name = st.session_state.user.get('username') or st.session_state.user['email']
+    st.sidebar.title(f"👋 Hi {display_name}!")
 
     if st.sidebar.button("Logout"):
         st.session_state.user = None

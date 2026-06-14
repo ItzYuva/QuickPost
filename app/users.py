@@ -13,6 +13,16 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     reset_password_token_secret = SECRET
     verification_token_secret = SECRET
 
+    async def create(self, user_create, safe=False, request=None):
+        from sqlalchemy import select
+        from fastapi import HTTPException
+        result = await self.user_db.session.execute(
+            select(User).where(User.username == user_create.username)
+        )
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Username already taken")
+        return await super().create(user_create, safe=safe, request=request)
+
     async def on_after_register(self, user: User, request: Optional[Request] = None):
         print(f"User {user.id} has registered.")
 

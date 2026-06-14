@@ -51,7 +51,7 @@ async def upload_file(
 
         if upload_result.response_metadata.http_status_code == 200:
             post = Post(
-                user_id=user.id,
+                user_id=str(user.id),
                 caption=caption,
                 url=upload_result.url,
                 file_type="video" if file.content_type.startswith("video/") else "image",
@@ -79,7 +79,7 @@ async def get_feed(
 
     result = await session.execute(select(User))
     users = [row[0] for row in result.all()]
-    user_dict = {u.id: u.email for u in users}
+    user_dict = {str(u.id): u.username or u.email for u in users}
 
     posts_data = []
     for post in posts:
@@ -92,8 +92,8 @@ async def get_feed(
                 "file_type": post.file_type,
                 "file_name": post.file_name,
                 "created_at": post.created_at.isoformat(),
-                "is_owner": post.user_id == user.id,
-                "email": user_dict.get(post.user_id, "Unknown")
+                "is_owner": str(post.user_id) == str(user.id),
+                "username": user_dict.get(str(post.user_id), "Unknown")
             }
         )
 
@@ -103,15 +103,13 @@ async def get_feed(
 @app.delete("/posts/{post_id}")
 async def delete_post(post_id: str, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_active_user),):
     try:
-        post_uuid = uuid.UUID(post_id)
-
-        result = await session.execute(select(Post).where(Post.id == post_uuid))
+        result = await session.execute(select(Post).where(Post.id == post_id))
         post = result.scalars().first()
 
         if not post:
             raise HTTPException(status_code=404, detail="Post not found")
 
-        if post.user_id != user.id:
+        if str(post.user_id) != str(user.id):
             raise HTTPException(status_code=403, detail="You don't have permission to delete this post")
 
         await session.delete(post)
