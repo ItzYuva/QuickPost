@@ -71,6 +71,11 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./test.db")
 # Detect if we're running with Postgres
 IS_POSTGRES = DATABASE_URL.startswith("postgres") or DATABASE_URL.startswith("postgresql")
 
+# Render gives postgresql:// but asyncpg needs postgresql+asyncpg://
+if IS_POSTGRES and "+asyncpg" not in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+
 # Import Postgres UUID type only if needed
 if IS_POSTGRES:
     from sqlalchemy.dialects.postgresql import UUID as PG_UUID
